@@ -114,3 +114,17 @@ Each entry: what I asked for, what the assistant did, how the result was checked
   after the code 75 passed. Mutation check: `>` changed to `>=` fails both "same time" cases;
   comparing `observed_at` as strings fails the `.000Z` and `.5Z` cases; always overwriting
   latest fails 5 tests including the task example.
+
+## 2026-10-16 - Step 6: final test run and manual check with curl
+
+- Asked: run all tests and check the real running service with curl.
+- Done / checked:
+  - `pytest -v`: 75 passed.
+  - Fresh `git clone` of the repository into a temporary folder, new virtual environment,
+    `pip install -r requirements.txt`, `pytest`: 75 passed (so the committed files are enough).
+  - Started `flask --app app run` on port 5000 and sent the 5 requests of the task example
+    with curl, reading `latest` after each one: 201 / 200 / 201 / 409 / 201, latest
+    event-001, event-001, event-001, event-001, event-003, as the task says. Also: boolean
+    value, unknown field and broken JSON return 422 and do not change latest; an unknown
+    sensor returns 404; `curl -d` without a Content-Type header is accepted (201).
+    The server log shows the same status codes. The server was stopped and port 5000 freed.

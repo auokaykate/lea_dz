@@ -47,7 +47,9 @@ Each entry: what I asked for, what the assistant did, how the result was checked
   Both `pytest` and `python -m pytest` work. A separate experiment showed that with the
   default `<sensor_id>` converter `/sensors/room/01/latest` and `/sensors/room%2F01/latest`
   return 404, with `<path:sensor_id>` both return 200.
-  I also ran the tests myself on my machine (WSL): 4 passed.
+  I also ran the tests from WSL: 4 passed. Correction added later: that run used
+  `.venv/Scripts/python.exe`, which is the Windows Python (platform win32), so it was not
+  a Linux check. The real Linux check is in the step 6 entry.
 
 ## 2026-10-16 - Step 3: validation (422)
 
@@ -128,3 +130,6 @@ Each entry: what I asked for, what the assistant did, how the result was checked
     value, unknown field and broken JSON return 422 and do not change latest; an unknown
     sensor returns 404; `curl -d` without a Content-Type header is accepted (201).
     The server log shows the same status codes. The server was stopped and port 5000 freed.
+  - Linux check, done by me: WSL, Python 3.12.3, a clean virtual environment in `/tmp`,
+    `pip install -r requirements.txt`, `pytest -q`: 75 passed.
+  - So the project is checked on Windows (Python 3.14) and Linux (Python 3.12).

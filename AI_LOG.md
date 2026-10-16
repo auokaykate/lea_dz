@@ -101,3 +101,16 @@ Each entry: what I asked for, what the assistant did, how the result was checked
   `.000Z` and `.500Z` cases; ignoring `sensor_id` fails the other-sensor case; letting a
   conflict overwrite stored data fails all 3 conflict cases; removing the lock fails nothing
   (expected: a race between threads is not reproduced by these tests).
+
+## 2026-10-16 - Step 5: latest reading by observed_at
+
+- Asked: tests first for table rows 39-45 (including the 5-request example from the task as
+  one test), then the code.
+- Done: 3 test functions (7 cases): newer / older / same time / same moment in another
+  notation / `.5Z` after `Z`; an older reading is still used for repeat checks; the task
+  example step by step. Code: `observed_moment()` helper (also used by `same_reading`),
+  latest is replaced only if the new `observed_at` is strictly later.
+- Checked: before the code 5 failed (the example failed at step 3, the older reading);
+  after the code 75 passed. Mutation check: `>` changed to `>=` fails both "same time" cases;
+  comparing `observed_at` as strings fails the `.000Z` and `.5Z` cases; always overwriting
+  latest fails 5 tests including the task example.

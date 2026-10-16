@@ -239,3 +239,62 @@ def test_invalid_repeat_is_rejected_before_duplicate_check(client):
 def test_same_data_with_new_event_id_is_accepted(client):
     assert client.post("/readings", json=make_reading()).status_code == 201
     assert client.post("/readings", json=make_reading(event_id="event-002")).status_code == 201
+
+
+# Latest reading: chosen by observed_at, not by arrival order
+
+
+@pytest.mark.parametrize(
+    "first_at, second_at, expected_latest",
+    [
+        ("2026-10-12T10:00:00Z", "2026-10-12T10:01:00Z", "second"),
+        ("2026-10-12T10:00:00Z", "2026-10-12T09:59:00Z", "first"),
+        ("2026-10-12T10:00:00Z", "2026-10-12T10:00:00Z", "first"),
+        ("2026-10-12T10:00:00.000Z", "2026-10-12T10:00:00Z", "first"),
+        # As strings ".5Z" < "Z", because "." comes before "Z"; as moments it is later.
+        ("2026-10-12T10:00:00Z", "2026-10-12T10:00:00.5Z", "second"),
+    ],
+    ids=["newer", "older", "same-time", "same-moment-other-notation", "fraction-is-later"],
+)
+def test_latest_is_chosen_by_observed_at(client, first_at, second_at, expected_latest):
+    readings = {
+        "first": make_reading(event_id="event-001", observed_at=first_at),
+        "second": make_reading(event_id="event-002", value=21.8, observed_at=second_at),
+    }
+    assert client.post("/readings", json=readings["first"]).status_code == 201
+    assert client.post("/readings", json=readings["second"]).status_code == 201
+
+    latest = client.get("/sensors/room-01-temperature/latest").get_json()
+    assert latest == readings[expected_latest]
+
+
+def test_older_reading_is_kept_for_repeat_checks(client):
+    newer = make_reading(event_id="event-001", observed_at="2026-10-12T10:00:00Z")
+    older = make_reading(event_id="event-002", value=21.8, observed_at="2026-10-12T09:59:00Z")
+    assert client.post("/readings", json=newer).status_code == 201
+    assert client.post("/readings", json=older).status_code == 201
+
+    assert client.post("/readings", json=older).status_code == 200
+    assert client.post("/readings", json={**older, "value": 25.0}).status_code == 409
+    assert client.get("/sensors/room-01-temperature/latest").get_json() == newer
+
+
+def test_example_from_task(client):
+    event_1 = make_reading(event_id="event-001", value=22.4, observed_at="2026-10-12T10:00:00Z")
+    event_2 = make_reading(event_id="event-002", value=21.8, observed_at="2026-10-12T09:59:00Z")
+    event_1_changed = make_reading(event_id="event-001", value=25.0, observed_at="2026-10-12T10:00:00Z")
+    event_3 = make_reading(event_id="event-003", value=23.0, observed_at="2026-10-12T10:01:00Z")
+
+    # (request, expected status, expected latest) for steps 1-5 of the task example.
+    steps = [
+        (event_1, 201, event_1),
+        (event_1, 200, event_1),
+        (event_2, 201, event_1),
+        (event_1_changed, 409, event_1),
+        (event_3, 201, event_3),
+    ]
+    for number, (reading, expected_status, expected_latest) in enumerate(steps, start=1):
+        response = client.post("/readings", json=reading)
+        assert response.status_code == expected_status, f"step {number}"
+        latest = client.get("/sensors/room-01-temperature/latest").get_json()
+        assert latest == expected_latest, f"step {number}"

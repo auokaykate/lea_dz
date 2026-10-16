@@ -47,3 +47,20 @@ Each entry: what I asked for, what the assistant did, how the result was checked
   Both `pytest` and `python -m pytest` work. A separate experiment showed that with the
   default `<sensor_id>` converter `/sensors/room/01/latest` and `/sensors/room%2F01/latest`
   return 404, with `<path:sensor_id>` both return 200.
+  I also ran the tests myself on my machine (WSL): 4 passed.
+
+## 2026-10-16 - Step 3: validation (422)
+
+- Asked: tests first for table rows 5-30, similar cases grouped with `pytest.mark.parametrize`;
+  all checks in one function `validate_reading(body)` that returns an error text or None,
+  the POST route only calls it.
+- Done: 11 new test functions (54 new cases, 58 in total); `validate_reading` in `app.py`;
+  the route parses the body with `request.get_json(force=True, silent=True)`.
+- Checked: before the code 45 failed / 13 passed (the 13 are the old tests and the "valid
+  input is accepted" cases); after the code 58 passed. Mutation check in a copy of the
+  project, one rule broken at a time: removing the bool check fails `true`/`false`; removing
+  the OverflowError handler fails the 400-zeros case (500); removing `silent=True` fails
+  broken JSON, empty body and the 5000-digit case (400). Changing `fullmatch` to `match` or
+  `[0-9]` to `\d` fails nothing, because `datetime.fromisoformat` also rejects a trailing
+  newline and non-ASCII digits (checked separately), so these two are a second line of defense.
+  First run of the mutation script was wrong (bad path, mutations never applied); fixed and rerun.

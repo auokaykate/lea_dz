@@ -64,3 +64,26 @@ Each entry: what I asked for, what the assistant did, how the result was checked
   `[0-9]` to `\d` fails nothing, because `datetime.fromisoformat` also rejects a trailing
   newline and non-ASCII digits (checked separately), so these two are a second line of defense.
   First run of the mutation script was wrong (bad path, mutations never applied); fixed and rerun.
+
+## 2026-10-16 - Fix: non-ASCII digits in the test file
+
+- I noticed: the assistant said the Arabic-Indic digits in the test were written as `٢`
+  escapes, but the file contained the real characters (the assistant's file-writing tool had
+  decoded the escapes, and it had not checked the bytes).
+- Done: both `tests/test_app.py` and the comment in `app.py` are now ASCII only; the test
+  uses `"٢٠٢٦..."`.
+- Checked: byte check that both files are ASCII only; at runtime the test value still starts
+  with code points 0x662, 0x660, 0x662, 0x666; 58 passed.
+
+## 2026-10-16 - Fix: deeply nested JSON returned 500
+
+- Found during step 3: a body like `[[[...]]]` nested 100 000 levels deep returned HTTP 500,
+  because Python raises `RecursionError` (not `ValueError`) and `get_json(silent=True)` only
+  catches `ValueError`.
+- Asked: fix it in a separate small commit with a test.
+- Done: test case `deeply-nested` (depth 1 000 000, so it also overflows on Linux, where the
+  stack is bigger); `parse_json_body()` calls `json.loads` and catches
+  `(ValueError, RecursionError)`; the route uses it instead of `request.get_json`.
+- Checked: the new case failed first (`assert 500 == 422`), then 59 passed; a direct request
+  with depth 100 000 and 1 000 000 returns 422.
+- My rule from now on: no more exotic cases beyond the task text.

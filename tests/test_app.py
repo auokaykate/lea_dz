@@ -75,8 +75,8 @@ def test_sensor_id_with_slash_can_be_read_back(client):
 
 @pytest.mark.parametrize(
     "raw_body",
-    ["not json", "", "[1, 2]", "null", '"text"', "5"],
-    ids=["not-json", "empty", "list", "null", "string", "number"],
+    ["not json", "", "[1, 2]", "null", '"text"', "5", "[" * 1_000_000 + "]" * 1_000_000],
+    ids=["not-json", "empty", "list", "null", "string", "number", "deeply-nested"],
 )
 def test_body_must_be_a_json_object(client, raw_body):
     response = client.post("/readings", data=raw_body, content_type="application/json")

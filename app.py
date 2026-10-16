@@ -1,3 +1,4 @@
+import json
 import math
 import re
 from datetime import datetime
@@ -11,6 +12,16 @@ REQUIRED_FIELDS = {"event_id", "sensor_id", "value", "observed_at"}
 OBSERVED_AT_FORMAT = re.compile(
     r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?Z"
 )
+
+
+def parse_json_body(raw_body):
+    """Return the parsed JSON body, or None if it is not valid JSON."""
+    try:
+        return json.loads(raw_body)
+    # ValueError: broken JSON, bad encoding, an integer longer than 4300 digits.
+    # RecursionError: very deeply nested JSON such as [[[[...]]]].
+    except (ValueError, RecursionError):
+        return None
 
 
 def validate_reading(body):
@@ -59,9 +70,8 @@ def create_app():
 
     @app.post("/readings")
     def add_reading():
-        # force: parse the body as JSON even without a Content-Type header.
-        # silent: return None instead of an HTTP 400 error if parsing fails.
-        body = request.get_json(force=True, silent=True)
+        # The Content-Type header is ignored: any body is parsed as JSON.
+        body = parse_json_body(request.get_data())
         error = validate_reading(body)
         if error is not None:
             return {"error": error}, 422

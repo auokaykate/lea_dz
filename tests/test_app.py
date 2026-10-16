@@ -184,3 +184,58 @@ def test_rejected_reading_does_not_reserve_event_id(client):
     assert_rejected(client, client.post("/readings", json=make_reading(value="bad")))
     # The same event_id with valid data is new: not a duplicate, not a conflict.
     assert client.post("/readings", json=make_reading()).status_code == 201
+
+
+# Repeated event_id: duplicate or conflict
+
+
+@pytest.mark.parametrize(
+    "first, repeat",
+    [
+        ({}, {}),
+        ({"value": 22}, {"value": 22.0}),
+        ({"observed_at": "2026-10-12T10:00:00Z"}, {"observed_at": "2026-10-12T10:00:00.000Z"}),
+        ({"observed_at": "2026-10-12T10:00:00.5Z"}, {"observed_at": "2026-10-12T10:00:00.500Z"}),
+    ],
+    ids=["exact", "22-and-22.0", "Z-and-.000Z", ".5Z-and-.500Z"],
+)
+def test_repeat_with_same_data_is_duplicate(client, first, repeat):
+    assert client.post("/readings", json=make_reading(**first)).status_code == 201
+
+    response = client.post("/readings", json=make_reading(**repeat))
+    assert response.status_code == 200
+    assert response.get_json() == {"status": "duplicate"}
+    # State is unchanged: latest is still the first reading, as it was sent.
+    latest = client.get("/sensors/room-01-temperature/latest").get_json()
+    assert latest == make_reading(**first)
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"value": 25.0},
+        {"observed_at": "2026-10-12T11:00:00Z"},
+        {"sensor_id": "room-02-temperature"},
+    ],
+    ids=["other-value", "newer-observed-at", "other-sensor"],
+)
+def test_repeat_with_different_data_is_conflict(client, changes):
+    assert client.post("/readings", json=make_reading()).status_code == 201
+
+    response = client.post("/readings", json=make_reading(**changes))
+    assert response.status_code == 409
+    assert "error" in response.get_json()
+    # State is unchanged: no newer latest, nothing for the other sensor.
+    assert client.get("/sensors/room-01-temperature/latest").get_json() == make_reading()
+    assert client.get("/sensors/room-02-temperature/latest").status_code == 404
+
+
+def test_invalid_repeat_is_rejected_before_duplicate_check(client):
+    assert client.post("/readings", json=make_reading()).status_code == 201
+    assert client.post("/readings", json=make_reading(value="x")).status_code == 422
+    assert client.get("/sensors/room-01-temperature/latest").get_json() == make_reading()
+
+
+def test_same_data_with_new_event_id_is_accepted(client):
+    assert client.post("/readings", json=make_reading()).status_code == 201
+    assert client.post("/readings", json=make_reading(event_id="event-002")).status_code == 201

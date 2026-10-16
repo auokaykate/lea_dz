@@ -1,6 +1,7 @@
 import json
 import math
 import re
+import threading
 from datetime import datetime
 
 from flask import Flask, request
@@ -62,11 +63,27 @@ def validate_reading(body):
     return None
 
 
+def same_reading(a, b):
+    """True if two valid readings with the same event_id carry the same data."""
+    return (
+        a["sensor_id"] == b["sensor_id"]
+        # 22 == 22.0 is True in Python.
+        and a["value"] == b["value"]
+        # Compare moments, not strings: "10:00:00Z" and "10:00:00.000Z" are equal.
+        and datetime.fromisoformat(a["observed_at"]) == datetime.fromisoformat(b["observed_at"])
+    )
+
+
 def create_app():
     app = Flask(__name__)
 
+    # event_id -> every accepted reading, kept to recognise repeats.
+    readings_by_event = {}
     # sensor_id -> the latest accepted reading, exactly as the client sent it.
     latest_by_sensor = {}
+    # The dev server runs requests in threads. The lock makes "look up event_id,
+    # then store" one step, so two requests cannot both see the event_id as new.
+    lock = threading.Lock()
 
     @app.post("/readings")
     def add_reading():
@@ -76,7 +93,15 @@ def create_app():
         if error is not None:
             return {"error": error}, 422
 
-        latest_by_sensor[body["sensor_id"]] = body
+        with lock:
+            stored = readings_by_event.get(body["event_id"])
+            if stored is not None:
+                if same_reading(stored, body):
+                    return {"status": "duplicate"}, 200
+                return {"error": f"event_id '{body['event_id']}' already exists with different data"}, 409
+
+            readings_by_event[body["event_id"]] = body
+            latest_by_sensor[body["sensor_id"]] = body
         return {"status": "accepted"}, 201
 
     # "path" (not the default "string") lets sensor_id contain "/".

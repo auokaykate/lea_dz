@@ -87,3 +87,17 @@ Each entry: what I asked for, what the assistant did, how the result was checked
 - Checked: the new case failed first (`assert 500 == 422`), then 59 passed; a direct request
   with depth 100 000 and 1 000 000 returns 422.
 - My rule from now on: no more exotic cases beyond the task text.
+
+## 2026-10-16 - Step 4: duplicates and conflicts of event_id
+
+- Asked: tests first for table rows 31-38, then the code.
+- Done: 4 test functions (9 cases): same data is a duplicate (exact, `22`/`22.0`,
+  `Z`/`.000Z`, `.5Z`/`.500Z`), different value / newer `observed_at` / other sensor is a
+  conflict, an invalid repeat gets 422, the same data with a new event_id is accepted.
+  Code: `readings_by_event` dict, `same_reading()`, a `threading.Lock` around
+  "look up event_id, then store".
+- Checked: before the code 7 failed (the 2 guard tests for rows 37-38 already passed);
+  after the code 68 passed. Mutation check: comparing `observed_at` as strings fails the
+  `.000Z` and `.500Z` cases; ignoring `sensor_id` fails the other-sensor case; letting a
+  conflict overwrite stored data fails all 3 conflict cases; removing the lock fails nothing
+  (expected: a race between threads is not reproduced by these tests).

@@ -135,3 +135,22 @@ Each entry: what I asked for, what the assistant did, how the result was checked
   - Linux check, done by me: WSL, Python 3.12.3, a clean virtual environment in `/tmp`,
     `pip install -r requirements.txt`, `pytest -q`: 75 passed.
   - So the project is checked on Windows (Python 3.14) and Linux (Python 3.12).
+
+## 2026-10-16 - Step 9: README
+
+- Asked: README in English, based on the task and this log. Steps 7-8 (interview practice)
+  are postponed until after sending.
+- Done: `README.md` with install / run / test commands for Linux/macOS and Windows, curl
+  examples, rules and decisions, limitations, time spent and use of AI.
+- Checked: the Windows install and test commands were run as written in a fresh clone
+  (75 passed); all 12 curl commands from the README were run against a fresh server and
+  their output was compared with the README automatically (0 differences); the PowerShell
+  example was run as written (the first version printed an empty line for the second
+  command because of PowerShell table formatting, fixed with `ConvertTo-Json`). Windows
+  version confirmed: Windows 10, build 19045. The Linux/macOS commands were not run by
+  the assistant.
+- Note: besides Claude Code I used a second assistant, Claude in a chat, as a reviewer
+  during the whole task. Several requests and corrections in this log came out of that
+  discussion: the huge integer case, testing the 4300+ digit integer through POST,
+  `parametrize`, a separate `validate_reading`, the escape-sequence mismatch, the WSL run
+  that used the Windows Python.

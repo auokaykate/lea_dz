@@ -69,13 +69,15 @@ Each entry: what I asked for, what the assistant did, how the result was checked
 
 ## 2026-10-16 - Fix: non-ASCII digits in the test file
 
-- I noticed: the assistant said the Arabic-Indic digits in the test were written as `٢`
+- I noticed: the assistant said the Arabic-Indic digits in the test were written as `\u0662`
   escapes, but the file contained the real characters (the assistant's file-writing tool had
   decoded the escapes, and it had not checked the bytes).
 - Done: both `tests/test_app.py` and the comment in `app.py` are now ASCII only; the test
-  uses `"٢٠٢٦..."`.
+  uses `"\u0662\u0660\u0662\u0666..."`.
 - Checked: byte check that both files are ASCII only; at runtime the test value still starts
   with code points 0x662, 0x660, 0x662, 0x666; 58 passed.
+- The same problem happened once more, in this log file (this entry): the assistant found it
+  while preparing the README and fixed it the same way. All tracked files are ASCII only.
 
 ## 2026-10-16 - Fix: deeply nested JSON returned 500
 

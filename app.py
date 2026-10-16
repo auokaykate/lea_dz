@@ -7,7 +7,7 @@ from flask import Flask, request
 REQUIRED_FIELDS = {"event_id", "sensor_id", "value", "observed_at"}
 
 # YYYY-MM-DDTHH:MM:SS, optional 1-6 fractional digits, then Z.
-# [0-9] instead of \d, because \d also matches non-ASCII digits such as "٢".
+# [0-9] instead of \d, because \d also matches non-ASCII digits (e.g. Arabic-Indic digits).
 OBSERVED_AT_FORMAT = re.compile(
     r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?Z"
 )

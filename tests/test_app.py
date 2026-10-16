@@ -171,7 +171,7 @@ def test_valid_observed_at_is_accepted(client, observed_at):
         "2026-12-31T23:59:60Z",  # leap second, datetime cannot store it
         pytest.param("", id="empty"),
         pytest.param("2026-10-12T10:00:00Z\n", id="trailing-newline"),
-        pytest.param("٢٠٢٦-10-12T10:00:00Z", id="non-ascii-digits"),
+        pytest.param("\u0662\u0660\u0662\u0666-10-12T10:00:00Z", id="non-ascii-digits"),
         pytest.param(1760263200, id="number"),
     ],
 )
